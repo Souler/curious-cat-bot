@@ -1,0 +1,29 @@
+{
+  "name": "curious-cat-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "ts-node src/bot",
+    "test": "mocha -r ts-node/register tests/**/*.ts"
+  },
+  "dependencies": {
+    "@types/dotenv": "^4.0.1",
+    "@types/md5": "^2.1.32",
+    "@types/mocha": "^2.2.42",
+    "@types/node": "^8.0.26",
+    "@types/node-telegram-bot-api": "^0.28.0",
+    "@types/request": "^2.0.3",
+    "@types/request-promise-native": "^1.0.6",
+    "@types/should": "^11.2.0",
+    "dotenv": "^4.0.0",
+    "md5": "^2.2.1",
+    "mocha": "^3.5.0",
+    "node-telegram-bot-api": "^0.28.0",
+    "request": "^2.81.0",
+    "request-promise-native": "^1.0.4",
+    "should": "^12.0.0",
+    "ts-node": "^3.3.0",
+    "typescript": "^2.5.2"
+  }
+}
