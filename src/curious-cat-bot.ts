@@ -57,36 +57,51 @@ export class CuriousCatBot {
         return this.bot.setWebHook(url);
     }
 
-    protected processQuery(query: string) {
-        const [ username, command = '', ...questionParts ] = query.split(' ');
-        const question = questionParts.join(' ');
-        return { username, command, question }
-    }
-
-    protected processInlineQuery(inlineQuery: telegram.InlineQuery) {
-        const { id, query } = inlineQuery;
-        const { username, command, question } = this.processQuery(query);
-
-        if (!command) // If we only have one argument passed treat it as a useranme search
-            return this.answerInlineUsernameSearch(id, username);
-        else if (command === COMMAND_POSTS)
-            return this.answerInlineUserPosts(id, username);
-        else if (command === COMMAND_ASK)
-            return this.answerInlineCreatePost(id, username, question);
-    }
-
-    protected async answerInlineUsernameSearch(queryId: string, username: string) {
+    protected async getUsersByUsername(username?: string) {
         let users = null;
         if (username)
             users = await this.api.search({ query: username, count: 5 });
         else
             users = await this.api.discoverUsers({ count: 5 });
-        return this.bot.answerInlineQuery(queryId, users.map(adapters.fromUserInfoToInlineArticle));
+        return users;
+    }
+
+    protected processQuery(query: string) {
+        const [ username, ...params ] = query.split(/\s+/);
+        return { username, params }
+    }
+
+    protected async processInlineQuery(inlineQuery: telegram.InlineQuery) {
+        const { id, query } = inlineQuery;
+        const { username, params } = this.processQuery(query);
+
+        const users = await this.getUsersByUsername(username.length >= 3 ? username : '');
+        const exactMatchUser = users.find(user =>
+            user.username.toLocaleLowerCase() === username.toLocaleLowerCase());
+
+        if (users.length === 0) {
+            return this.answerInlineUnknownUsername(id, username);
+        }
+
+        if (exactMatchUser) {
+            if (params.length === 0)
+                return this.answerInlineUserPosts(id, username);
+            else
+                return this.answerInlineCreatePost(id, username, params.join(' '));
+        }
+
+        return this.answerInlineUsernameSearch(id, users);
+    }
+
+    protected async answerInlineUsernameSearch(queryId: string, users: curiouscat.UserInfo[]) {
+        const userArticles = users.map((user) => adapters.fromUserInfoToInlineArticle(user));
+        return this.bot.answerInlineQuery(queryId, userArticles);
     }
 
     protected async answerInlineUnknownUsername(queryId: string, username: string) {
-        return this.bot.answerInlineQuery(queryId, [], {
-            switch_pm_text: `Unknown user ${username}. Try searching?`,
+        return this.bot.answerInlineQuery(queryId, null, {
+            switch_pm_text: `Unknown user ${username}.`,
+            switch_pm_parameter: 'test',
         });
     }
 
@@ -94,7 +109,7 @@ export class CuriousCatBot {
         const user = await this.api.getUserProfile({ username, count: 5 });
         if (!user)
             return this.answerInlineUnknownUsername(queryId, username);
-        const posts = user.posts.map(adapters.fromUserPostToInlineArticle);
+        const posts = adapters.fromUserPostsToInlineArticles(user, user.posts);
         return this.bot.answerInlineQuery(queryId, posts);
     }
 
@@ -106,9 +121,9 @@ export class CuriousCatBot {
     }
 
     protected async processChoosenInlineResult(result: telegram.ChosenInlineResult) {
-        console.log(result);
-        const { username, command, question } = this.processQuery(result.query);
-        if (command === COMMAND_ASK) {
+        const { username, params } = this.processQuery(result.query);
+        if (params.length > 0) {
+            const question = params.join(' ');
             const user = await this.api.getUserProfile({ username, count: 0 });
             if (!user)
                 return;
