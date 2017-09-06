@@ -1,10 +1,18 @@
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+import * as ejs from 'ejs';
 import * as md5 from 'md5';
 import * as curiouscat from './types/curious-cat';
 import * as telegram from './types/telegram';
 import * as utils from './utils';
 import { CuriousCatHttpApi } from './curious-cat-http-api';
 
-export function buildInlineSingleRowKeyboard(buttons: Array<{ text: string, url?: string, switchInlineQuery?: string }>) {
+const postMessageTemplatePath = resolve(__dirname, './response-templates/post.ejs');
+const postMessageTemplate = ejs.compile(readFileSync(postMessageTemplatePath, 'utf8'));
+const newPostMessageTemplatePath = resolve(__dirname, './response-templates/new-post.ejs');
+const newPostMessageTemplate = ejs.compile(readFileSync(newPostMessageTemplatePath, 'utf8'));
+
+function buildInlineSingleRowKeyboard(buttons: Array<{ text: string, url?: string, switchInlineQuery?: string }>) {
     const buttonsRow = buttons.map((button) => ({
         text: button.text,
         url: button.url,
@@ -15,13 +23,10 @@ export function buildInlineSingleRowKeyboard(buttons: Array<{ text: string, url?
     }
 }
 
-export function buildNewQuestionMarkdownText(addressee: string, question: string) {
-    addressee = utils.markdownEscape(addressee);
-    question = utils.markdownEscape(question);
-    return [
-        `I just asked ${addressee}`,
-        `*${question}*`,
-    ].join('\r\n');
+function buildViewProfileInlineKeyboard(user: curiouscat.UserInfo) {
+    return buildInlineSingleRowKeyboard([
+        { text: `View ${user.username} posts`, switchInlineQuery: `${user.username} ` },
+    ]);
 }
 
 export function buildUnknownUserReply(username: string) {
@@ -35,35 +40,30 @@ export function buildUnknownUserReply(username: string) {
 }
 
 export function buildNewQuestionAsInlineQuery(user: curiouscat.UserInfo, question: string) {
-    console.log(buildNewQuestionMarkdownText(user.username, question))
+    const addresseeProfileUrl = CuriousCatHttpApi.getUserProfileUrl(user);
     return {
         id: `user_ask:${user.id}:${md5(question)}`,
         type: 'article',
-        title: `Ask ${user.username}`,
+        title: `Send question to ${user.username}:`,
         description: question,
         input_message_content: {
-            parse_mode: telegram.ParseMode.MARKDOWN,
-            message_text: buildNewQuestionMarkdownText(user.username, question),
+            parse_mode: telegram.ParseMode.HTML,
+            message_text: newPostMessageTemplate({
+                addressee: user.username,
+                addresseeProfileUrl,
+                question,
+            }),
         },
         thumb_url: user.avatar,
     }
 }
 
-export function fromUserPostToMarkdownText(post: curiouscat.UserProfilePost): string {
-    const question = utils.markdownEscape(post.comment);
-    const reply = utils.markdownEscape(post.reply);
-    return [
-        `*${question}*`,
-        '',
-        `${reply}`,
-    ].join('\r\n');
-}
-
-export function fromUserPostToInlineArticle(post: curiouscat.UserProfilePost): telegram.InlineQueryResultArticle {
+function fromUserPostToInlineArticle(post: curiouscat.UserProfilePost): telegram.InlineQueryResultArticle {
     const postId = post.id;
     const addresseeUsername = post.addresseeData.username;
     const profileUrl = CuriousCatHttpApi.getUserProfileUrl({ username: addresseeUsername });
     const postUrl = CuriousCatHttpApi.getPostUrl({ username: addresseeUsername, postId });
+    const senderUsername = (<curiouscat.UserInfo> post.senderData).username || 'Anon';
     const senderAvatar = post.senderData.avatar;
 
     return {
@@ -75,29 +75,44 @@ export function fromUserPostToInlineArticle(post: curiouscat.UserProfilePost): t
         hide_url: true,
         thumb_url: `${senderAvatar}`,
         input_message_content: {
-            parse_mode: telegram.ParseMode.MARKDOWN,
-            message_text: fromUserPostToMarkdownText(post),
+            parse_mode: telegram.ParseMode.HTML,
+            message_text: postMessageTemplate({
+                sender: senderUsername,
+                question: post.comment,
+                addressee: addresseeUsername,
+                addresseeProfileUrl: profileUrl,
+                reply: post.reply,
+            }),
         },
-        reply_markup: buildInlineSingleRowKeyboard([
-            { text: 'Profile', url: profileUrl },
-            { text: 'Post', url: postUrl },
-        ])
+        reply_markup: buildViewProfileInlineKeyboard(post.addresseeData),
     }
 }
 
-export function fromUserInfoToInlineArticle(user: curiouscat.UserInfo): telegram.InlineQueryResultArticle {
+export function fromUserPostsToInlineArticles(
+    user: curiouscat.UserProfile,
+    posts: curiouscat.UserProfilePost[],
+): telegram.InlineQueryResultArticle[] {
+    const userArticle = fromUserInfoToInlineArticle(user, {
+        title: `Q&A by ${user.username}:`,
+        description: `... or keep typing to ask ${user.username} something`,
+    });
+    const postArticles = user.posts.map(fromUserPostToInlineArticle);
+    return [ userArticle, ...postArticles];
+}
+
+export function fromUserInfoToInlineArticle(
+    user: curiouscat.UserInfo,
+    { title, description }: { title?: string, description?: string } = {},
+): telegram.InlineQueryResultArticle {
     return             {
         id: `user:${user.id}`,
         type: 'article',
-        title: user.username,
-        description: user.askboxtext || `Ask ${user.username} something!`,
+        title: title || user.username,
+        description: description || user.askboxtext || `Ask ${user.username} something!`,
         thumb_url: user.avatar,
         input_message_content: {
             message_text: `https://curiouscat.me/${user.username}`,
         },
-        reply_markup: buildInlineSingleRowKeyboard([
-            { text: 'Ask', switchInlineQuery: `${user.username} ask ` },
-            { text: 'Posts', switchInlineQuery: `${user.username} posts ` },
-        ]),
+        reply_markup: buildViewProfileInlineKeyboard(user),
     }
 }

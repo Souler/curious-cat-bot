@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@types/dotenv": "^4.0.1",
+    "@types/ejs": "^2.3.33",
     "@types/md5": "^2.1.32",
     "@types/mocha": "^2.2.42",
     "@types/node": "^8.0.26",
@@ -17,6 +18,7 @@
     "@types/request-promise-native": "^1.0.6",
     "@types/should": "^11.2.0",
     "dotenv": "^4.0.0",
+    "ejs": "^2.5.7",
     "md5": "^2.2.1",
     "mocha": "^3.5.0",
     "node-telegram-bot-api": "^0.28.0",

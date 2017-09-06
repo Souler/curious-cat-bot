@@ -8,6 +8,10 @@
   dependencies:
     "@types/node" "*"
 
+"@types/ejs@^2.3.33":
+  version "2.3.33"
+  resolved "https://registry.yarnpkg.com/@types/ejs/-/ejs-2.3.33.tgz#0a4e0a7aeee09944154b06ce5a2ac6a118f92b00"
+
 "@types/form-data@*":
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/@types/form-data/-/form-data-2.2.0.tgz#a98aac91dc99857b6af24caef7ca6df302f31565"
@@ -240,6 +244,10 @@ ecc-jsbn@~0.1.1:
   resolved "https://registry.yarnpkg.com/ecc-jsbn/-/ecc-jsbn-0.1.1.tgz#0fc73a9ed5f0d53c38193398523ef7e543777505"
   dependencies:
     jsbn "~0.1.0"
+
+ejs@^2.5.7:
+  version "2.5.7"
+  resolved "https://registry.yarnpkg.com/ejs/-/ejs-2.5.7.tgz#cc872c168880ae3c7189762fd5ffc00896c9518a"
 
 end-of-stream@^1.1.0:
   version "1.4.0"
