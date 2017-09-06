@@ -99,7 +99,9 @@ export class CuriousCatHttpApi {
                 search: query,
                 count,
             }
-        }).then(res => res.results);
+        })
+        .then(res => res.results)
+        .catch(() => []);
     }
 
 
