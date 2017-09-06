@@ -1,6 +1,7 @@
 import TelegramBot = require('node-telegram-bot-api');
 import * as curiouscat from './types/curious-cat';
 import * as telegram from './types/telegram';
+import * as curiouscatbot from './types/curious-cat-bot';
 import * as adapters from './curiouscat-telegram-adapters';
 import { CuriousCatHttpApi } from './curious-cat-http-api';
 
@@ -10,20 +11,46 @@ const COMMAND_ASK = 'ask';
 export class CuriousCatBot {
     private bot: TelegramBot;
     private api: CuriousCatHttpApi;
+    private usesPolling: boolean;
 
-    constructor(telegramToken: string, curiouscatToken: string) {
-        this.bot = new TelegramBot(telegramToken, { polling: { autoStart: false } });
-        this.api = new CuriousCatHttpApi(curiouscatToken);
+    constructor(options: curiouscatbot.CuriousCatBotConstructorArguments) {
+        const { telegram, curiouscat } = options;
+        const { token , ...telegramBotOpts } = telegram;
+        const _telegramBotOpts = {};
+
+        if (telegramBotOpts.webHook) {
+            this.usesPolling = false;
+            Object.assign(_telegramBotOpts, {
+                webHook: {
+                    port: telegramBotOpts.webHook.port,
+                },
+            })
+
+        } else {
+            this.usesPolling = true;
+            Object.assign(_telegramBotOpts, {
+                polling: { autoStart: false },
+            })
+        }
+
+        this.bot = new TelegramBot(telegram.token, _telegramBotOpts);
+        this.api = new CuriousCatHttpApi(curiouscat.token);
         this.bot.on('inline_query', (query: telegram.InlineQuery) => this.processInlineQuery(query));
         this.bot.on('chosen_inline_result', (result: telegram.ChosenInlineResult) => this.processChoosenInlineResult(result));
     }
 
     start() {
-        this.bot.startPolling();
+        if (this.usesPolling)
+            return this.bot.startPolling();
+        else
+            return this.bot.openWebHook();
     }
 
     stop() {
-        this.bot.stopPolling();
+        if (this.usesPolling)
+            return this.bot.stopPolling();
+        else
+            return this.bot.closeWebHook();
     }
 
     protected processQuery(query: string) {

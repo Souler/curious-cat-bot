@@ -1,11 +1,25 @@
 import { CuriousCatBot } from './curious-cat-bot';
+import * as curiouscatbot from './types/curious-cat-bot';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const telegramToken = process.env['TELEGRAM_BOT_TOKEN'];
-const curiouscatToken = process.env['CURIOUSCAT_API_TOKEN'];
-const bot = new CuriousCatBot(telegramToken, curiouscatToken);
+const conf: curiouscatbot.CuriousCatBotConstructorArguments = {
+    telegram: {
+        token: process.env['TELEGRAM_BOT_TOKEN'],
+    },
+    curiouscat: {
+        token: process.env['CURIOUSCAT_API_TOKEN'],
+    },
+}
+
+if (process.env['PORT']) {
+    conf.telegram.webHook = {
+        port: Number(process.env['PORT']),
+    }
+}
+
+const bot = new CuriousCatBot(conf);
 
 bot.start();
 // Teardown logic
