@@ -53,6 +53,10 @@ export class CuriousCatBot {
             return this.bot.closeWebHook();
     }
 
+    setWebHook(url: string) {
+        return this.bot.setWebHook(url);
+    }
+
     protected processQuery(query: string) {
         const [ username, command = '', ...questionParts ] = query.split(' ');
         const question = questionParts.join(' ');
