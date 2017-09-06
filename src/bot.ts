@@ -27,4 +27,7 @@ process.on('exit', () => bot.stop())
 // Ctrl+c event
 process.on('SIGINT', () => process.exit(1));
 //Catches uncaught exceptions
-process.on('uncaughtException', () => process.exit(1));
+process.on('uncaughtException', (e) => {
+    console.error(e);
+    process.exit(1);
+});
